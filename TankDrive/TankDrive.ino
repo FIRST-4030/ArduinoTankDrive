@@ -18,13 +18,14 @@ float inputMedian;
 void setup() {
   // put your setup code here, to run once:
 
-pinMode(LeftYPin, INPUT); // Set our input pins as such
-pinMode(RightXPin, INPUT); // Set our input pins as such
+// Set our input pins as such
+pinMode(LeftYPin, INPUT); 
+pinMode(RightXPin, INPUT); 
 
 inputMax = RangeMin;
 inputMin = RangeMax;
 
-Serial.begin(9600); // The author made a ridiculous pun. We don't know what this does.
+Serial.begin(9600); 
 }
 
 void loop() {
