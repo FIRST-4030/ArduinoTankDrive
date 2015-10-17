@@ -63,10 +63,10 @@ void loop() {
         inputMin = ch1;
       }
 
-        //Serial.print("inputmax 1: ");  
-        //Serial.println(inputMax);
-        //Serial.print("inputmin 2: ");
-        //Serial.println(inputMin);
+      //Serial.print("inputmax 1: ");  
+      //Serial.println(inputMax);
+      //Serial.print("inputmin 2: ");
+      //Serial.println(inputMin);
         
       inputScaler = ((inputMax - inputMin)/2);
       inputMedian = (inputScaler + inputMin);
@@ -79,14 +79,47 @@ void loop() {
   //convert to range of -1 to 1
   output1 = (ch1 - inputMedian)/inputScaler;
   output2 = (ch2 - inputMedian)/inputScaler;
-
-  //convert to output range of 0 to 255
-  output1 = ((output1 * 128) + 128);
-  output2 = ((output2 * 128) + 128);
   
+  //limit output values to range
+  if (output1 > 1)
+    {
+    output1 = 1;
+    }
+  if (output1 < -1)
+    { 
+    output1 = -1;
+    }
+  if (output2 > 1)
+    {
+    output2 = 1;
+    }
+  if (output2 < -1)
+    { 
+    output2 = -1;
+    }
+
+  //make the center 0 point slightly larger
+  if ((output1 < 0.1) && (output1 > -0.1))
+    {
+    output1 = 0;
+    }
+  if ((output2 < 0.1) && (output2 > -0.1))
+    { 
+    output2 = 0;
+    }
+
   Serial.print("Output 1: ");  
   Serial.println(output1);
   Serial.print("Output 2: ");
+  Serial.println(output2);
+  
+  //convert to output range of 0 to 255
+  output1 = ((output1 * 127.5) + 127.5);
+  output2 = ((output2 * 127.5) + 127.5);
+
+  Serial.print("Output 3: ");  
+  Serial.println(output1);
+  Serial.print("Output 4: ");
   Serial.println(output2);
   
   delay(1000);
