@@ -1,14 +1,16 @@
 // Comment this debug line for production runs
 #define DEBUG
 
-#define STOP (0)
+#define PWM_MIN (0)
+#define PWM_MAX (255)
+#define STOP ((int)(PWM_MAX - PWM_MIN) / 2)
 #define SERIAL_SPEED (9600)
 #define IN_RANGE_MAX (5000)
 #define IN_RANGE_MIN (500)
 #define PIN_Y (35)
 #define PIN_X (45)
-#define OUTPUT_SCALER (255/2)
-#define DEAD_ZONE (5)
+#define OUTPUT_SCALER ((int)(PWM_MAX - PWM_MIN) / 2)
+#define DEAD_ZONE (8)
 #define OUTPUT_LEFT (55)
 #define OUTPUT_RIGHT (56)
 #define READ_TIMEOUT (25000)
@@ -16,15 +18,17 @@
 // Globals
 int inY;
 int inX;
-float outLeft = STOP;
-float outRight = STOP;
-float inputMax = IN_RANGE_MIN;
-float inputMin = IN_RANGE_MAX;
+int outLeft = STOP;
+int outRight = STOP;
+int inputMax = IN_RANGE_MIN;
+int inputMin = IN_RANGE_MAX;
 float inputScaler;
 float inputMedian;
+float turnAtStop = 1;
+float turnAtSpeed = 0;
 
 // Function prototypes
-void setMinMax(float input);
+void setMinMax(int input);
 int deadZone(int in);
 float limitOutput(float in);
 
@@ -45,6 +49,8 @@ void setup() {
 
 void loop() {
 while(true) {
+  // Intermediate variables
+  float tempY, tempX;
 
   // Set motor speeds
   Serial.print("Output: ");  
@@ -87,16 +93,24 @@ while(true) {
   inX = deadZone(inX);
   
   // Convert to range of -1 to 1
-  outLeft = inY / inputScaler;
-  outRight = inX / inputScaler;
+  tempY = (float)inY / inputScaler;
+  tempX = (float)inX / inputScaler;
+
+  // Adjust values to tank drive
+  tempY = tempY + tempX;
+  tempX = tempY - tempX;
+
+  //more tunable version of tank drive - need to adjust values for quadrants
+  //outLeft = inY + (turnAtStop * inX * (1 - inY);
+  //outRight = inY - (turnAtStop * inX) + (inY * inX * (turnAtStop - turnAtSpeed - 1));
   
   // Limit output values to the valid range, in case our scaler is slightly off
-  outLeft = limitOutput(outLeft);
-  outRight = limitOutput(outRight);
+  tempY = limitOutput(tempY);
+  tempX = limitOutput(tempX);
       
   // Scale to the output range
-  outLeft = ((outLeft * OUTPUT_SCALER) + OUTPUT_SCALER);
-  outRight = ((outRight * OUTPUT_SCALER) + OUTPUT_SCALER);
+  outLeft = (int)((tempY * OUTPUT_SCALER) + OUTPUT_SCALER);
+  outRight = (int)((tempX * OUTPUT_SCALER) + OUTPUT_SCALER);
 
   #ifdef DEBUG
     delay(1000);
@@ -104,14 +118,14 @@ while(true) {
 }
 }
 
-void setMinMax(float input){
+void setMinMax(int input){
   if (input > inputMax) {
     inputMax = input;
   } else if (input < inputMin) {
     inputMin = input;
   }
-  inputScaler = ((inputMax - inputMin) / 2);
-  inputMedian = (inputScaler + inputMin);
+  inputScaler = (((float)inputMax - (float)inputMin) / 2.0);
+  inputMedian = (inputScaler + (float)inputMin);
 }
 
 int deadZone(int in) {
