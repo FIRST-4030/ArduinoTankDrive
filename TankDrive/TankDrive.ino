@@ -1,5 +1,5 @@
 // Comment this debug line for production runs
-#define DEBUG
+//#define DEBUG
 
 #define PWM_MIN (0)
 #define PWM_MAX (255)
@@ -7,8 +7,8 @@
 #define SERIAL_SPEED (9600)
 #define IN_RANGE_MAX (5000)
 #define IN_RANGE_MIN (500)
-#define PIN_Y (35)
-#define PIN_X (45)
+#define PIN_X (45) // Radio channel 1 (right X)
+#define PIN_Y (35) // Radio channel 2 (right Y)
 #define OUTPUT_SCALER ((int)(PWM_MAX - PWM_MIN) / 2)
 #define DEAD_ZONE (8)
 #define OUTPUT_LEFT (55)
@@ -50,7 +50,8 @@ void setup() {
 void loop() {
 while(true) {
   // Intermediate variables
-  float tempY, tempX;
+  float tempX, tempY;
+  float tempLeft, tempRight;
 
   // Set motor speeds
   Serial.print("Output: ");  
@@ -64,9 +65,9 @@ while(true) {
   inY = pulseIn(PIN_Y, HIGH, READ_TIMEOUT); 
   inX = pulseIn(PIN_X, HIGH, READ_TIMEOUT);
   Serial.print("Raw: ");
-  Serial.print(inY);
+  Serial.print(inX);
   Serial.print(",");
-  Serial.println(inX);
+  Serial.println(inY);
 
   // On invalid input, stay in a tight loop
   if ((inY <= IN_RANGE_MIN) || (inX <= IN_RANGE_MIN) ||
@@ -96,21 +97,35 @@ while(true) {
   tempY = (float)inY / inputScaler;
   tempX = (float)inX / inputScaler;
 
+  #ifdef DEBUG
+    Serial.print("Scaled Input: ");
+	Serial.print(tempX);
+  	Serial.print(",");
+  	Serial.println(tempY);
+  #endif
+
   // Adjust values to tank drive
-  tempY = tempY + tempX;
-  tempX = tempY - tempX;
+  tempLeft = tempY + tempX;
+  tempRight = tempY - tempX;
 
   //more tunable version of tank drive - need to adjust values for quadrants
-  //outLeft = inY + (turnAtStop * inX * (1 - inY);
+  //outLeft = inY + (turnAtStop * inX * (1 - inY));
   //outRight = inY - (turnAtStop * inX) + (inY * inX * (turnAtStop - turnAtSpeed - 1));
   
   // Limit output values to the valid range, in case our scaler is slightly off
-  tempY = limitOutput(tempY);
-  tempX = limitOutput(tempX);
+  tempLeft = limitOutput(tempLeft);
+  tempRight = limitOutput(tempRight);
+
+  #ifdef DEBUG
+    Serial.print("Scale Output: ");
+	Serial.print(tempLeft);
+	Serial.print(",");
+	Serial.println(tempRight);
+  #endif
       
   // Scale to the output range
-  outLeft = (int)((tempY * OUTPUT_SCALER) + OUTPUT_SCALER);
-  outRight = (int)((tempX * OUTPUT_SCALER) + OUTPUT_SCALER);
+  outLeft = (int)((tempLeft * OUTPUT_SCALER) + OUTPUT_SCALER);
+  outRight = (int)((tempRight * OUTPUT_SCALER) + OUTPUT_SCALER);
 
   #ifdef DEBUG
     delay(1000);
