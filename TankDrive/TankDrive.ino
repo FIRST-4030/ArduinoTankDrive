@@ -11,8 +11,8 @@
 #define PIN_Y (35) // Radio channel 2 (right Y)
 #define OUTPUT_SCALER ((int)(PWM_MAX - PWM_MIN) / 2)
 #define DEAD_ZONE (8)
-#define OUTPUT_LEFT (55)
-#define OUTPUT_RIGHT (56)
+#define OUTPUT_LEFT (5)
+#define OUTPUT_RIGHT (6)
 #define READ_TIMEOUT (25000)
 
 // Globals
