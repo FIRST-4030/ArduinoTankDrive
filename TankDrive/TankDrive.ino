@@ -1,8 +1,10 @@
+#include <Servo.h>
+
 // Comment this debug line for production runs
 //#define DEBUG
 
 #define PWM_MIN (0)
-#define PWM_MAX (255)
+#define PWM_MAX (180)
 #define STOP ((int)(PWM_MAX - PWM_MIN) / 2)
 #define SERIAL_SPEED (9600)
 #define IN_RANGE_MAX (5000)
@@ -11,8 +13,8 @@
 #define PIN_Y (35) // Radio channel 2 (right Y)
 #define OUTPUT_SCALER ((int)(PWM_MAX - PWM_MIN) / 2)
 #define DEAD_ZONE (8)
-#define OUTPUT_LEFT (5)
-#define OUTPUT_RIGHT (6)
+#define OUTPUT_LEFT (9)
+#define OUTPUT_RIGHT (10)
 #define READ_TIMEOUT (25000)
 
 // Globals
@@ -26,6 +28,8 @@ float inputScaler;
 float inputMedian;
 float turnAtStop = 1;
 float turnAtSpeed = 0;
+Servo LeftServo;
+Servo RightServo;
 
 // Function prototypes
 void setMinMax(int input);
@@ -37,6 +41,10 @@ void setup() {
   pinMode(PIN_Y, INPUT); 
   pinMode(PIN_X, INPUT); 
 
+  //set output pins
+  LeftServo.attach(OUTPUT_LEFT);
+  RightServo.attach(OUTPUT_RIGHT);
+  
   // Ensure our initial state is reasonable
   inputMax = IN_RANGE_MIN;
   inputMin = IN_RANGE_MAX;
@@ -58,8 +66,8 @@ while(true) {
   Serial.print(outLeft);
   Serial.print(",");
   Serial.println(outRight);
-  analogWrite(OUTPUT_RIGHT, outLeft);
-  analogWrite(OUTPUT_LEFT, outRight);
+  LeftServo.write(outLeft);
+  RightServo.write(outRight);
 
   // Read the pulse width of each channel
   inY = pulseIn(PIN_Y, HIGH, READ_TIMEOUT); 
@@ -99,7 +107,7 @@ while(true) {
 
   #ifdef DEBUG
     Serial.print("Scaled Input: ");
-	Serial.print(tempX);
+	  Serial.print(tempX);
   	Serial.print(",");
   	Serial.println(tempY);
   #endif
