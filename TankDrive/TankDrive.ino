@@ -10,7 +10,8 @@
 #define SERIAL_SPEED (9600)
 #define IN_RANGE_MAX (4000)
 #define IN_RANGE_MIN (500)
-#define CALIBRATION_VAL (2000)
+#define CALIBRATION_MAX (2000)
+#define CALIBRATION_MIN (1200)
 #define PIN_X (45) // Radio channel 1 (right X)
 #define PIN_Y (35) // Radio channel 2 (right Y)
 #define OUTPUT_SCALER ((int)(PWM_MAX - PWM_MIN) / 2)
@@ -97,7 +98,7 @@ while(true) {
  setMinMax(inX);
 
  // Don't consider the system ready until calibration is reasonable
- if (inputMax <= CALIBRATION_VAL) {
+ if (inputMax <= CALIBRATION_MAX) || (inputMin >= CALIBRATION_MIN) {
      outLeft = STOP;
      outRight = STOP;
      continue;
