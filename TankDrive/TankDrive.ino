@@ -1,4 +1,3 @@
-
 #include <Servo.h>
 
 // Comment this debug line for production runs
@@ -14,15 +13,19 @@
 #define CALIBRATION_MIN (1300)
 #define PIN_X (45) // Radio channel 1 (right X)
 #define PIN_Y (35) // Radio channel 2 (right Y)
+#define PIN_SPEED (40) //Radio channel ???? (left Y)
 #define OUTPUT_SCALER ((int)(PWM_MAX - PWM_MIN) / 2)
 #define DEAD_ZONE (10)
 #define OUTPUT_LEFT (9)
 #define OUTPUT_RIGHT (10)
 #define READ_TIMEOUT (25000)
+#define LEFT (0)
+#define RIGHT (1)
 
 // Globals
 int inY;
 int inX;
+int inSpeed;
 int outLeft = STOP;
 int outRight = STOP;
 int inputMax = IN_RANGE_MIN;
@@ -31,23 +34,25 @@ float inputScaler;
 float inputMedian;
 float turnAtStop = 1;
 float turnAtSpeed = 0;
-Servo LeftServo;
-Servo RightServo;
+Servo Motors[2];
 boolean calibrationDone = false;
 
 // Function prototypes
 void setMinMax(int input);
 int deadZone(int in);
 float limitOutput(float in);
+void setMotorSpeed(int motor, float in);
+float speedLimit(float in);
 
 void setup() {
  // Set our input pins as such
  pinMode(PIN_Y, INPUT);
  pinMode(PIN_X, INPUT);
+ pinMode(PIN_SPEED, INPUT);
 
  //set output pins
- LeftServo.attach(OUTPUT_LEFT);
- RightServo.attach(OUTPUT_RIGHT);
+ Motors[LEFT].attach(OUTPUT_LEFT);
+ Motors[RIGHT].attach(OUTPUT_RIGHT);
 
  // Ensure our initial state is reasonable
  inputMax = IN_RANGE_MIN;
@@ -58,6 +63,8 @@ void setup() {
  // Pull up the serial port for debugging
  Serial.begin(SERIAL_SPEED);
 }
+
+
 
 void loop() {
 while(true) {
@@ -70,16 +77,18 @@ while(true) {
  Serial.print(outLeft);
  Serial.print(",");
  Serial.println(outRight);
- LeftServo.write(outLeft);
- RightServo.write(outRight);
+ setMotorSpeed(LEFT, outLeft);
+ setMotorSpeed(RIGHT, outRight);
 
  // Read the pulse width of each channel
  inY = pulseIn(PIN_Y, HIGH, READ_TIMEOUT);
  inX = pulseIn(PIN_X, HIGH, READ_TIMEOUT);
+ inSpeed = pulseIn(PIN_SPEED, HIGH, READ_TIMEOUT);
  Serial.print("Raw: ");
  Serial.print(inX);
  Serial.print(",");
  Serial.println(inY);
+
 
  // On invalid input, stay in a tight loop
  if ((inY <= IN_RANGE_MIN) || (inX <= IN_RANGE_MIN) ||
@@ -127,6 +136,8 @@ while(true) {
  tempY = (float)inY / inputScaler;
  tempX = (float)inX / inputScaler;
 
+ //speed limit
+
  #ifdef DEBUG
    Serial.print("Scaled Input: ");
     Serial.print(tempX);
@@ -153,10 +164,8 @@ while(true) {
   Serial.println(tempRight);
  #endif
 
- // Scale to the output range
- outLeft = (int)((tempLeft * OUTPUT_SCALER) + OUTPUT_SCALER);
- outRight = (int(180)) - ((int)((tempRight * OUTPUT_SCALER) + OUTPUT_SCALER));
 
+ 
  #ifdef DEBUG
    delay(1000);
  #endif
@@ -189,4 +198,29 @@ float limitOutput(float in) {
    }
  }
  return out;
+}
+
+float speedLimit(float in) {
+  
+}
+
+
+void setMotorSpeed(int motor, float in) {
+  if (speed != STOP){
+    switch(motor){
+      case LEFT:
+        speed = (float)speed * 0.8;
+        break;
+      case RIGHT:
+      default:
+        break;
+    }
+  }
+
+  // Scale to the output range
+  outLeft = (int)((tempLeft * OUTPUT_SCALER) + OUTPUT_SCALER);
+  outRight = (int(180)) - ((int)((tempRight * OUTPUT_SCALER) + OUTPUT_SCALER));
+
+  //write motor speed
+  Motors[motor].write(outLeft);
 }
