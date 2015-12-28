@@ -4,7 +4,11 @@
 //#define DEBUG
 
 
-	
+  	//init step - calibration and setting up pins
+	//main run loop 
+	//read input	-outputs -1 to 1
+	//tranformation
+	//write output  -takes -1 to 1
 
 #define IN_RANGE_MAX (4000)
 #define IN_RANGE_MIN (500)
@@ -40,12 +44,17 @@ float turnAtSpeed = 0;
 Servo Motors[2];
 boolean calibrationDone = false;
 
+
 // Function prototypes
 void setMinMax(int input);
 int deadZone(int in);
 float limitOutput(float in);
 void setMotorSpeed(int motor, float in);
 float speedLimit(float in);
+void readInputs();
+void centerAndDeadZone();
+
+
 
 void setup() {
  // Set our input pins as such
@@ -65,45 +74,68 @@ void setup() {
 
  // Pull up the serial port for debugging
  Serial.begin(SERIAL_SPEED);
+ 
+ //calibration
+ while (calibrationDone = false){
+ 		calibration()
+ }
 }
 
 
 
 void loop() {
-  
-  //init step - calibration and setting up pins
-//main run loop 
-	//read input	-outputs -1 to 1
-	//tranformation
+ while(true) {
+ 	// Intermediate variables
+ 	float tempX, tempY;
+ 	float tempLeft, tempRight;
+
 	//write output  -takes -1 to 1
+	setMotorSpeed(LEFT, outLeft);
+    setMotorSpeed(RIGHT, outRight);
+
+    //read input
+ 	readInputs();
+ 	//outputs -1 to 1
+ 	centerAndDeadZone();
+
 	
-while(true) {
- // Intermediate variables
- float tempX, tempY;
- float tempLeft, tempRight;
-
-
+ 	//transformation
+    //speed limit
  
- setMotorSpeed(LEFT, outLeft);
- setMotorSpeed(RIGHT, outRight);
-
- //input and calibration
- readInputs()
-
- //speed limit
-
-
-
-
- 
- #ifdef DEBUG
-   delay(1000);
- #endif
-}
+    #ifdef DEBUG
+    	delay(1000);
+    #endif
+ }
 }
 
-void readInputs{
-  
+
+
+void calibration{
+	readinputs();
+		
+    // Don't consider the system ready until calibration is reasonable
+    if ((inputMax <= CALIBRATION_MAX) || (inputMin >= CALIBRATION_MIN)) {
+        outLeft = STOP;
+        outRight = STOP;
+        continue;
+	}
+		
+	centerAndDeadZone();
+			
+	// Once calibration is valid, wait for a return to the dead zone
+	if (!calibrationDone) {
+		if (inX != 0 && inY != 0) {
+	    	outLeft = STOP;
+	        outRight = STOP;
+	        continue;
+	      } else {
+	        calibrationDone = true;
+	      }
+		}
+}
+
+void readInputs(){
+
  // Read the pulse width of each channel
  inY = pulseIn(PIN_Y, HIGH, READ_TIMEOUT);
  inX = pulseIn(PIN_X, HIGH, READ_TIMEOUT);
@@ -115,7 +147,6 @@ void readInputs{
  Serial.print(inY);
  Serial.print(",");
  Serial.println(inspeed);
- 
  
  // On invalid input, stay in a tight loop
  if ((inY <= IN_RANGE_MIN) || (inX <= IN_RANGE_MIN) ||
@@ -132,38 +163,76 @@ void readInputs{
  // Calculate the input range
  setMinMax(inY);
  setMinMax(inX);
-
- // Don't consider the system ready until calibration is reasonable
- if ((inputMax <= CALIBRATION_MAX) || (inputMin >= CALIBRATION_MIN)) {
-     outLeft = STOP;
-     outRight = STOP;
-     continue;
- }
-
- // Zero-center the input
- inY -= inputMedian;
- inX -= inputMedian;
-
- // Provide a small dead zone on the input data
- inY = deadZone(inY);
- inX = deadZone(inX);
-
- // Once calibration is valid, wait for a return to the dead zone
- if (!calibrationDone) {
-   if (inX != 0 && inY != 0) {
-     outLeft = STOP;
-     outRight = STOP;
-     continue;
-   } else {
-     calibrationDone = true;
-   }
- }
-
- // Convert to range of -1 to 1
- tempY = (float)inY / inputScaler;
- tempX = (float)inX / inputScaler;
-  
 }
+
+void centerAndDeadZone(){
+	 // Zero-center the input
+	 inY -= inputMedian;
+	 inX -= inputMedian;
+
+	 // Provide a small dead zone on the input data
+	 inY = deadZone(inY);
+	 inX = deadZone(inX);
+	 
+	 // Convert to range of -1 to 1
+	 tempY = (float)inY / inputScaler;
+	 tempX = (float)inX / inputScaler;
+ }
+
+
+ float speedLimit(float in) {
+    #ifdef DEBUG
+    Serial.print("Scaled Input: ");
+     Serial.print(tempX);
+   Serial.print(",");
+   Serial.println(tempY);
+  #endif
+
+  // Adjust values to tank drive
+  tempLeft = tempY + tempX;
+  tempRight = tempY - tempX;
+
+  //more tunable version of tank drive - need to adjust values for quadrants
+  //outLeft = inY + (turnAtStop * inX * (1 - inY));
+  //outRight = inY - (turnAtStop * inX) + (inY * inX * (turnAtStop - turnAtSpeed - 1));
+
+  // Limit output values to the valid range, in case our scaler is slightly off
+  tempLeft = limitOutput(tempLeft);
+  tempRight = limitOutput(tempRight);
+
+  #ifdef DEBUG
+    Serial.print("Scale Output: ");
+   Serial.print(tempLeft);
+   Serial.print(",");
+   Serial.println(tempRight);
+  #endif
+ }
+
+ void setMotorSpeed(int motor, float in) {
+   if (speed != STOP){
+     switch(motor){
+       case LEFT:
+         speed = (float)speed * 0.8;
+         break;
+       case RIGHT:
+       default:
+         break;
+     }
+   }
+
+   // Scale to the output range
+   outLeft = (int)((tempLeft * OUTPUT_SCALER) + OUTPUT_SCALER);
+   outRight = (int(180)) - ((int)((tempRight * OUTPUT_SCALER) + OUTPUT_SCALER));
+  
+    // Set motor speeds
+  Serial.print("Output: ");
+  Serial.print(outLeft);
+  Serial.print(",");
+  Serial.println(outRight);
+
+   //write motor speed
+   Motors[motor].write(outLeft);
+ }
 
 
 void setMinMax(int input){
@@ -194,59 +263,5 @@ float limitOutput(float in) {
  return out;
 }
 
-float speedLimit(float in) {
-   #ifdef DEBUG
-   Serial.print("Scaled Input: ");
-    Serial.print(tempX);
-  Serial.print(",");
-  Serial.println(tempY);
- #endif
-
- // Adjust values to tank drive
- tempLeft = tempY + tempX;
- tempRight = tempY - tempX;
-
- //more tunable version of tank drive - need to adjust values for quadrants
- //outLeft = inY + (turnAtStop * inX * (1 - inY));
- //outRight = inY - (turnAtStop * inX) + (inY * inX * (turnAtStop - turnAtSpeed - 1));
-
- // Limit output values to the valid range, in case our scaler is slightly off
- tempLeft = limitOutput(tempLeft);
- tempRight = limitOutput(tempRight);
-
- #ifdef DEBUG
-   Serial.print("Scale Output: ");
-  Serial.print(tempLeft);
-  Serial.print(",");
-  Serial.println(tempRight);
- #endif
-  
-  
-}
 
 
-void setMotorSpeed(int motor, float in) {
-  if (speed != STOP){
-    switch(motor){
-      case LEFT:
-        speed = (float)speed * 0.8;
-        break;
-      case RIGHT:
-      default:
-        break;
-    }
-  }
-
-  // Scale to the output range
-  outLeft = (int)((tempLeft * OUTPUT_SCALER) + OUTPUT_SCALER);
-  outRight = (int(180)) - ((int)((tempRight * OUTPUT_SCALER) + OUTPUT_SCALER));
-  
-   // Set motor speeds
- Serial.print("Output: ");
- Serial.print(outLeft);
- Serial.print(",");
- Serial.println(outRight);
-
-  //write motor speed
-  Motors[motor].write(outLeft);
-}
